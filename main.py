@@ -37,6 +37,25 @@ def calculate_average_distance(image):
     return avg
 
 
+def calculate_average_hue(image):
+    hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+
+    distance_list = []
+    for row in image:
+        for (h, s, v) in row:
+            # Only our pixels, not added black background
+            if(h != 0 and s != 0 and v != 0):
+                distance_list.append(h)
+
+    # Cast list to numpy array
+    distance_list = np.array(distance_list, dtype="int")
+
+    # Calculate average
+    avg = np.average(distance_list)
+    return avg
+
+
+
 def make_coin_decision(center_avg, ring_avg):
     if(center_avg < 50.0 or ring_avg < 50.0):
         decision = "Skip image"
@@ -131,8 +150,17 @@ def angle_cos(p0, p1, p2):
     return abs( np.dot(d1, d2) / np.sqrt( np.dot(d1, d1)*np.dot(d2, d2) ) )
 
 
+def fix_histogram(image):
+    source = cv2.cvtColor(image, cv2.COLOR_BGR2YCrCb)
+    b, g, r = cv2.split(source)
+
+    img = cv2.merge((b, g, r))
+    final = cv2.cvtColor(img, cv2.COLOR_YCrCb2BGR)
+
+    return final
+
 if __name__ == '__main__':
-    results_dir = "results/"
+    results_dir = "results_new_1/"
 
     # Create new directory when not exists
     if not os.path.exists(results_dir):
@@ -144,6 +172,7 @@ if __name__ == '__main__':
     # files_name_list = glob.glob("data/picture_069*") # 1 PLN, table
     # files_name_list = glob.glob("data/picture_045*") # 5 PLN, carpet
     # files_name_list = glob.glob("data/picture_043*") # 0.50 PLN, white
+    # files_name_list = glob.glob("data/picture_08*") + glob.glob("data/picture_09*") + glob.glob("data/picture_1*")
     # files_name_list = glob.glob("data/*") # All images
 
     # Read files
@@ -151,6 +180,8 @@ if __name__ == '__main__':
 
     # Iterate on images
     for index, image in enumerate(image_list):
+        image = fix_histogram(image)
+        print(str(files_name_list[index]))
         # Convert image to gray
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
@@ -166,6 +197,7 @@ if __name__ == '__main__':
         sum = min + max
 
         # Manually set EVERY POINT to [0; 255] - gray scale
+        # TO CHANGE!
         gray_matrix = []
         for line in laplacian:
             row = []
@@ -179,13 +211,13 @@ if __name__ == '__main__':
         gray_matrix = np.array(gray_matrix, dtype=np.uint8)
 
         # Find cicles
-        # circles = cv2.HoughCircles(gray_matrix, cv2.HOUGH_GRADIENT, 1.1, 270, param1 = 100, param2 = 100, minRadius = 95, maxRadius = 200)
-        circles = None
+        circles = cv2.HoughCircles(gray_matrix, cv2.HOUGH_GRADIENT, 1.1, 270, param1 = 100, param2 = 100, minRadius = 95, maxRadius = 200)
+        # circles = None
 
         # Find banknotes
         banknote_image = image.copy()
         rectangle = find_rectangle(banknote_image)
-        print("Banknote found = " + str(len(rectangle)))
+        # print("Banknote found = " + str(len(rectangle)))
         for img in rectangle[0:1]:
             x, y, width, height = cv2.boundingRect(img)
             banknote_to_test = banknote_image[y : y + height, x : x + width].copy()
@@ -193,6 +225,10 @@ if __name__ == '__main__':
             banknote_analize = banknote_image[y + int(height / 5) : y + 4 * int(height / 5), x + int(width / 3) : x + 3 * int(width / 4)].copy()
             test_avg = calculate_average_distance(banknote_analize)
             decision, money = make_banknote_decision(test_avg)
+
+            test_hsv = calculate_average_hue(banknote_analize)
+            print("HSV = " + str(test_hsv))
+            print("AVG = " + str(test_avg))
 
             banknote_output = image.copy()
             banknote_overlay = image.copy()
@@ -202,7 +238,7 @@ if __name__ == '__main__':
             cv2.rectangle(banknote_output, (x, y), (x + width, y + height), find_color(money), 10)
             cv2.putText(banknote_output, "{:.2f} PLN".format(money), (np.int(x + width / 2), np.int(y + height / 2)), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (204, 119, 0), 3)
 
-            path = results_dir + files_name_list[index].split('/')[1]
+            path = results_dir + "banknote_" + files_name_list[index].split('/')[1]
             cv2.imwrite(path, banknote_output)
 
 
@@ -240,7 +276,7 @@ if __name__ == '__main__':
 
                 # Calculate average of distance between pixels - distance between x and y, x and z, y and z
                 center_circle_avg = calculate_average_distance(center_circle)
-                print("Center = " + str(center_circle_avg))
+                # print("Center = " + str(center_circle_avg))
 
                 # Prepare ring to test outside distance
                 ring = crop.copy()
@@ -249,10 +285,10 @@ if __name__ == '__main__':
                 ring[mask[:,:] == 0] = 0
 
                 ring_avg = calculate_average_distance(ring)
-                print("Ring = " + str(ring_avg))
+                # print("Ring = " + str(ring_avg))
 
                 decision, money = make_coin_decision(center_circle_avg, ring_avg)
-                print("Decision = " + decision)
+                # print("Decision = " + decision)
 
                 # Draw on original image
                 if(money != -1):
