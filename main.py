@@ -165,22 +165,8 @@ if __name__ == '__main__':
         rectangle = find_squares(banknote_image)
         print("Banknote found = " + str(len(rectangle)))
         for img in rectangle:
-            min_y = 9999999
-            min_x = 9999999
-            max_y = 0
-            max_x = 0
-            for point in img:
-                if(point[1] < min_y):
-                    min_y = point[1]
-                if(point[1] > max_y):
-                    max_y = point[1]
-
-                if(point[0] < min_x):
-                    min_x = point[0]
-                if(point[0] > max_x):
-                    max_x = point[0]
-
-            show_image(banknote_image[min_y:max_y, min_x:max_x])
+            x, y, width, height = cv2.boundingRect(img)
+            show_image(banknote_image[y : y + height, x : x + width])
 
         cv2.drawContours(banknote_image, rectangle, -1, (0, 255, 0), 3)
         show_image(banknote_image)
