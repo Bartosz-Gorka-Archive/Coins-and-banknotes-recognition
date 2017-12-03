@@ -36,6 +36,24 @@ def calculate_average_distance(image):
     avg = np.average(distance_list)
     return avg
 
+
+def make_decision(center_avg, ring_avg):
+    if(center_avg < 50.0 or ring_avg < 50.0):
+        decision = "Skip image"
+    elif(center_avg < 110.0):
+        if(ring_avg < 110.0):
+            decision = "1 PLN"
+        else:
+            decision = "2 PLN"
+    else:
+        if(ring_avg < 110.0):
+            decision = "5 PLN"
+        else:
+            decision = "0.50 PLN"
+
+    return decision
+
+
 if __name__ == '__main__':
     results_dir = "results/"
 
@@ -44,8 +62,8 @@ if __name__ == '__main__':
       os.makedirs(results_dir)
 
     # Find files to read
-    files_name_list = glob.glob("data/picture_014*") # 1.00
-    # files_name_list = glob.glob("data/picture_045*") # 5.00, carpet
+    # files_name_list = glob.glob("data/picture_014*") # 1.00
+    files_name_list = glob.glob("data/picture_045*") # 5.00, carpet
     # files_name_list = glob.glob("data/picture_043*") # 0.50
     # files_name_list = glob.glob("data/*") # all
 
@@ -128,6 +146,9 @@ if __name__ == '__main__':
 
                 ring_avg = calculate_average_distance(ring)
                 print("Ring = " + str(ring_avg))
+
+                decision = make_decision(center_circle_avg, ring_avg)
+                print("Decision = " + decision)
 
                 path = results_dir + str(cin) + files_name_list[index].split('/')[1]
                 cv2.imwrite(path, crop)
