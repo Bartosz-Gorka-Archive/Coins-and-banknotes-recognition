@@ -26,16 +26,15 @@ if __name__ == '__main__':
       os.makedirs(results_dir)
 
     # Find files to read
-    files_name_list = glob.glob("data/picture_003*")
-    # files_name_list = glob.glob("data/*")
+    files_name_list = glob.glob("data/picture_014*") # 1.00
+    # files_name_list = glob.glob("data/picture_043*") # 0.50
+    # files_name_list = glob.glob("data/*") # all
 
     # Read files
     image_list = list(map(cv2.imread, files_name_list))
 
     # Iterate on images
-    for image in image_list:
-    #     # show_image(image)
-
+    for index, image in enumerate(image_list):
         # Convert image to gray
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
@@ -71,7 +70,7 @@ if __name__ == '__main__':
             circles = np.round(circles[0, :]).astype("int")
 
             # Loop over the circles (x, y, r)
-            for (x, y, r) in circles:
+            for cin, (x, y, r) in enumerate(circles):
                 # Crop image
                 crop = image[y-r:y+r,x-r:x+r].copy()
 
@@ -81,7 +80,25 @@ if __name__ == '__main__':
                 crop[mask[:,:]==0]=0
 
                 # Resize cropped image
-                resized_image = cv2.resize(crop, (128, 128))
+                # resized_image = cv2.resize(crop, (128, 128))
 
                 # Show image
-                show_image(resized_image)
+                new_r = int(r*0.1)
+                new = image[y-new_r:y+new_r,x-new_r:x+new_r].copy()
+                mask = np.zeros((new.shape[0],new.shape[1]),dtype=np.uint8)
+                cv2.circle(mask,(new_r,new_r),new_r, (255,255,255), -1, 8, 0)
+                new[mask[:,:]==0]=0
+                show_image(new)
+
+                different_colors_list = []
+                for row in new:
+                    for (px, py, pz) in row:
+                        if(px != 0 and py != 0 and pz != 0):
+                            value = abs(int(px) - int(py)) + abs(int(px) - int(pz)) + abs(int(pz) - int(py))
+                            different_colors_list.append(value)
+
+                different_colors_list = np.array(different_colors_list, dtype="int")
+                print("Average = " + str(np.average(different_colors_list)))
+
+                path = results_dir + str(cin) + files_name_list[index].split('/')[1]
+                cv2.imwrite(path, crop)
