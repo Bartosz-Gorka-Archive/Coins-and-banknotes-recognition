@@ -37,7 +37,7 @@ def calculate_average_distance(image):
     return avg
 
 
-def make_decision(center_avg, ring_avg):
+def make_coin_decision(center_avg, ring_avg):
     if(center_avg < 50.0 or ring_avg < 50.0):
         decision = "Skip image"
         money = -1
@@ -55,6 +55,19 @@ def make_decision(center_avg, ring_avg):
         else:
             decision = "0.50 PLN"
             money = 0.50
+
+    return decision, money
+
+def make_banknote_decision(avg_color):
+    if(avg_color > 80.0):
+        decision = "10 PLN"
+        money = 10.00
+    elif(avg_color > 40.0):
+        decision = "100 PLN"
+        money = 100.00
+    else:
+        decision = "50 PLN"
+        money = 50.00
 
     return decision, money
 
@@ -181,7 +194,10 @@ if __name__ == '__main__':
             banknote_analize = banknote_image[y + int(height / 5) : y + 4 * int(height / 5), x + int(width / 3) : x + 3 * int(width / 4)].copy()
             show_image(banknote_analize)
             test_avg = calculate_average_distance(banknote_analize)
+            decision, money = make_banknote_decision(test_avg)
+
             print("Test avg = " + str(test_avg))
+            print("Decision = " + decision)
 
 
         cv2.drawContours(banknote_image, rectangle, -1, (0, 255, 0), 3)
@@ -235,7 +251,7 @@ if __name__ == '__main__':
                 ring_avg = calculate_average_distance(ring)
                 print("Ring = " + str(ring_avg))
 
-                decision, money = make_decision(center_circle_avg, ring_avg)
+                decision, money = make_coin_decision(center_circle_avg, ring_avg)
                 print("Decision = " + decision)
 
                 # Draw on original image
