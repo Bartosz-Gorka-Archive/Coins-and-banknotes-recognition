@@ -81,9 +81,9 @@ def find_color(money):
     return color[::-1]
 
 
-def find_squares(img):
+def find_rectangle(img):
     img = cv2.GaussianBlur(img, (5, 5), 0)
-    squares = []
+    rectangle = []
     for gray in cv2.split(img):
         for thrs in range(0, 255, 26):
             if thrs == 0:
@@ -100,8 +100,8 @@ def find_squares(img):
                     cnt = cnt.reshape(-1, 2)
                     max_cos = np.max([angle_cos( cnt[i], cnt[(i+1) % 4], cnt[(i+2) % 4] ) for i in range(4)])
                     if max_cos < 0.1:
-                        squares.append(cnt)
-    return squares
+                        rectangle.append(cnt)
+    return rectangle
 
 
 def angle_cos(p0, p1, p2):
@@ -162,7 +162,7 @@ if __name__ == '__main__':
 
         # Find banknotes
         banknote_image = image.copy()
-        rectangle = find_squares(banknote_image)
+        rectangle = find_rectangle(banknote_image)
         print("Banknote found = " + str(len(rectangle)))
         for img in rectangle:
             x, y, width, height = cv2.boundingRect(img)
