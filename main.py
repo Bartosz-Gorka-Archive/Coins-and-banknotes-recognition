@@ -64,6 +64,9 @@ const_colors = [ (255,0,255),       # PING  - UNKNOWN
                  (255,0,0),         # BLUE  - 1 PLN
                  (0,0,255),         # RED   - 2 PLN
                  (128, 107, 59),    # BROWN - 5 PLN
+                 (114, 97, 68),     # 10 PLN
+                 (142, 161, 226),   # 50 PLN
+                 (115, 175, 114),   # 100 PLN
                 ]
 
 def find_color(money):
@@ -75,6 +78,12 @@ def find_color(money):
         color = const_colors[3]
     elif(money == 5.00):
         color = const_colors[4]
+    elif(money == 10.00):
+        color = const_colors[5]
+    elif(money == 50.00):
+        color = const_colors[6]
+    elif(money == 100.00):
+        color = const_colors[7]
     else:
         color = const_colors[0]
 
