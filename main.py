@@ -7,11 +7,10 @@ from matplotlib import pyplot as plt
 
 
 def show_image(image, gray = True):
-    b, g, r = cv2.split(image)
-    rgb_image = cv2.merge([r,g,b])
+    rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
     if gray == True:
-        plt.imshow(rgb_image, cmap = plt.cm.gray)
+        plt.imshow(rgb_image, cmap = "gray")
     else:
         plt.imshow(rgb_image)
 
@@ -27,6 +26,7 @@ if __name__ == '__main__':
 
     # Find files to read
     files_name_list = glob.glob("data/picture_014*") # 1.00
+    # files_name_list = glob.glob("data/picture_045*") # 5.00, carpet
     # files_name_list = glob.glob("data/picture_043*") # 0.50
     # files_name_list = glob.glob("data/*") # all
 
