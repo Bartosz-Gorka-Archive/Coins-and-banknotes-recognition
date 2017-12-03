@@ -199,9 +199,17 @@ if __name__ == '__main__':
             print("Test avg = " + str(test_avg))
             print("Decision = " + decision)
 
+            banknote_output = image.copy()
+            banknote_overlay = image.copy()
 
-        cv2.drawContours(banknote_image, rectangle, -1, (0, 255, 0), 3)
-        show_image(banknote_image)
+            cv2.rectangle(banknote_overlay, (x, y), (x + width, y + height), find_color(money), -1)
+            cv2.addWeighted(banknote_overlay, 0.25, banknote_output, 0.75, 0, banknote_output)
+            cv2.rectangle(banknote_output, (x, y), (x + width, y + height), find_color(money), 10)
+            cv2.putText(banknote_output, "{:.2f} PLN".format(money), (np.int(x + width / 2), np.int(y + height / 2)), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (204, 119, 0), 3)
+
+            path = results_dir + files_name_list[index].split('/')[1]
+            cv2.imwrite(path, banknote_output)
+
 
         output = image.copy()
         overlay = image.copy()
@@ -259,7 +267,7 @@ if __name__ == '__main__':
                     cv2.circle(overlay, (x, y), r, find_color(money), -1)
                     cv2.addWeighted(overlay, 0.25, output, 0.75, 0, output)
                     cv2.circle(output, (x, y), r, find_color(money), 10)
-                    cv2.putText(output, str(money),(np.int(x-r/2),y), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 0, 0), 3)
+                    cv2.putText(output, "{:.2f} PLN".format(money), (np.int(x-r/2),y), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (204, 119, 0), 3)
 
             path = results_dir + files_name_list[index].split('/')[1]
             cv2.imwrite(path, output)
