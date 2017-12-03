@@ -40,13 +40,13 @@ def calculate_average_distance(image):
 def make_decision(center_avg, ring_avg):
     if(center_avg < 50.0 or ring_avg < 50.0):
         decision = "Skip image"
-    elif(center_avg < 110.0):
-        if(ring_avg < 110.0):
+    elif(center_avg < 120.0):
+        if(ring_avg < 120.0):
             decision = "1 PLN"
         else:
             decision = "2 PLN"
     else:
-        if(ring_avg < 110.0):
+        if(ring_avg < 120.0):
             decision = "5 PLN"
         else:
             decision = "0.50 PLN"
@@ -62,8 +62,8 @@ if __name__ == '__main__':
       os.makedirs(results_dir)
 
     # Find files to read
-    # files_name_list = glob.glob("data/picture_014*") # 1.00
-    files_name_list = glob.glob("data/picture_045*") # 5.00, carpet
+    files_name_list = glob.glob("data/picture_014*") # 1.00
+    # files_name_list = glob.glob("data/picture_045*") # 5.00, carpet
     # files_name_list = glob.glob("data/picture_043*") # 0.50
     # files_name_list = glob.glob("data/*") # all
 
@@ -100,7 +100,7 @@ if __name__ == '__main__':
         gray_matrix = np.array(gray_matrix, dtype=np.uint8)
 
         # Find cicles
-        circles = cv2.HoughCircles(gray_matrix, cv2.HOUGH_GRADIENT, 1.2, 150, param1 = 100, param2 = 100, minRadius = 90, maxRadius = 200)
+        circles = cv2.HoughCircles(gray_matrix, cv2.HOUGH_GRADIENT, 1.1, 150, param1 = 100, param2 = 100, minRadius = 95, maxRadius = 200)
 
         if circles is not None:
             # Convert the (x, y) coordinates and radius of the circles to integers
