@@ -40,18 +40,45 @@ def calculate_average_distance(image):
 def make_decision(center_avg, ring_avg):
     if(center_avg < 50.0 or ring_avg < 50.0):
         decision = "Skip image"
+        money = -1
     elif(center_avg < 120.0):
         if(ring_avg < 120.0):
             decision = "1 PLN"
+            money = 1.00
         else:
             decision = "2 PLN"
+            money = 2.00
     else:
         if(ring_avg < 120.0):
             decision = "5 PLN"
+            money = 5.00
         else:
             decision = "0.50 PLN"
+            money = 0.50
 
-    return decision
+    return decision, money
+
+
+const_colors = [ (255,0,255),       # PING  - UNKNOWN
+                 (0,255,0),         # GREEN - 0.50 PLN
+                 (255,0,0),         # BLUE  - 1 PLN
+                 (0,0,255),         # RED   - 2 PLN
+                 (128, 107, 59),    # BROWN - 5 PLN
+                ]
+
+def find_color(money):
+    if(money == 0.50):
+        color = const_colors[1]
+    elif(money == 1.00):
+        color = const_colors[2]
+    elif(money == 2.00):
+        color = const_colors[3]
+    elif(money == 5.00):
+        color = const_colors[4]
+    else:
+        color = const_colors[0]
+
+    return color[::-1]
 
 
 if __name__ == '__main__':
