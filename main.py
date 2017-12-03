@@ -189,15 +189,10 @@ if __name__ == '__main__':
         for img in rectangle[0:1]:
             x, y, width, height = cv2.boundingRect(img)
             banknote_to_test = banknote_image[y : y + height, x : x + width].copy()
-            show_image(banknote_to_test)
 
             banknote_analize = banknote_image[y + int(height / 5) : y + 4 * int(height / 5), x + int(width / 3) : x + 3 * int(width / 4)].copy()
-            show_image(banknote_analize)
             test_avg = calculate_average_distance(banknote_analize)
             decision, money = make_banknote_decision(test_avg)
-
-            print("Test avg = " + str(test_avg))
-            print("Decision = " + decision)
 
             banknote_output = image.copy()
             banknote_overlay = image.copy()
@@ -242,9 +237,6 @@ if __name__ == '__main__':
 
                 # Add black background outside
                 center_circle[mask[:,:] == 0] = 0
-
-                # Show cut center circle
-                # show_image(center_circle)
 
                 # Calculate average of distance between pixels - distance between x and y, x and z, y and z
                 center_circle_avg = calculate_average_distance(center_circle)
