@@ -127,7 +127,10 @@ if __name__ == '__main__':
         gray_matrix = np.array(gray_matrix, dtype=np.uint8)
 
         # Find cicles
-        circles = cv2.HoughCircles(gray_matrix, cv2.HOUGH_GRADIENT, 1.1, 150, param1 = 100, param2 = 100, minRadius = 95, maxRadius = 200)
+        circles = cv2.HoughCircles(gray_matrix, cv2.HOUGH_GRADIENT, 1.1, 270, param1 = 100, param2 = 100, minRadius = 95, maxRadius = 200)
+
+        output = image.copy()
+        overlay = image.copy()
 
         if circles is not None:
             # Convert the (x, y) coordinates and radius of the circles to integers
@@ -174,8 +177,15 @@ if __name__ == '__main__':
                 ring_avg = calculate_average_distance(ring)
                 print("Ring = " + str(ring_avg))
 
-                decision = make_decision(center_circle_avg, ring_avg)
+                decision, money = make_decision(center_circle_avg, ring_avg)
                 print("Decision = " + decision)
 
-                path = results_dir + str(cin) + files_name_list[index].split('/')[1]
-                cv2.imwrite(path, crop)
+                # Draw on original image
+                if(money != -1):
+                    cv2.circle(overlay, (x, y), r, find_color(money), -1)
+                    cv2.addWeighted(overlay, 0.25, output, 0.75, 0, output)
+                    cv2.circle(output, (x, y), r, find_color(money), 10)
+                    cv2.putText(output, str(money),(np.int(x-r/2),y), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 0, 0), 3)
+
+            path = results_dir + files_name_list[index].split('/')[1]
+            cv2.imwrite(path, output)
