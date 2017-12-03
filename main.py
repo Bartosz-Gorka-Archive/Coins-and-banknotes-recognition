@@ -79,19 +79,26 @@ if __name__ == '__main__':
                 cv2.circle(mask,(r,r),r, (255,255,255), -1, 8, 0)
                 crop[mask[:,:]==0]=0
 
-                # Resize cropped image
-                # resized_image = cv2.resize(crop, (128, 128))
+                # Prepare center circle radius
+                center_radius = int(r * 0.1) # 10% of original radius
 
-                # Show image
-                new_r = int(r*0.1)
-                new = image[y-new_r:y+new_r,x-new_r:x+new_r].copy()
-                mask = np.zeros((new.shape[0],new.shape[1]),dtype=np.uint8)
-                cv2.circle(mask,(new_r,new_r),new_r, (255,255,255), -1, 8, 0)
-                new[mask[:,:]==0]=0
-                show_image(new)
+                # Copy original image to new variable
+                center_circle = image[y-center_radius : y+center_radius, x-center_radius : x+center_radius].copy()
+
+                # Prepare mask with zeros to cut only circle
+                mask = np.zeros((center_circle.shape[0],center_circle.shape[1]),dtype=np.uint8)
+
+                # Cut circle from center
+                cv2.circle(mask, (center_radius, center_radius), center_radius, (255,255,255), -1, 8, 0)
+
+                # Add black background outside
+                center_circle[mask[:,:] == 0] = 0
+
+                # Show cut center circle
+                show_image(center_circle)
 
                 different_colors_list = []
-                for row in new:
+                for row in center_circle:
                     for (px, py, pz) in row:
                         if(px != 0 and py != 0 and pz != 0):
                             value = abs(int(px) - int(py)) + abs(int(px) - int(pz)) + abs(int(pz) - int(py))
