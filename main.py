@@ -81,6 +81,34 @@ def find_color(money):
     return color[::-1]
 
 
+def find_squares(img):
+    img = cv2.GaussianBlur(img, (5, 5), 0)
+    squares = []
+    for gray in cv2.split(img):
+        for thrs in range(0, 255, 26):
+            if thrs == 0:
+                bin = cv2.Canny(gray, 0, 50, apertureSize = 5)
+                bin = cv2.dilate(bin, None)
+            else:
+                _retval, bin = cv2.threshold(gray, thrs, 255, cv2.THRESH_BINARY)
+            bin, contours, _hierarchy = cv2.findContours(bin, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+
+            for cnt in contours:
+                cnt_len = cv2.arcLength(cnt, True)
+                cnt = cv2.approxPolyDP(cnt, 0.02*cnt_len, True)
+                if len(cnt) == 4 and cnt.all() != 0 and cv2.contourArea(cnt) > 30000 and cv2.isContourConvex(cnt):
+                    cnt = cnt.reshape(-1, 2)
+                    max_cos = np.max([angle_cos( cnt[i], cnt[(i+1) % 4], cnt[(i+2) % 4] ) for i in range(4)])
+                    if max_cos < 0.1:
+                        squares.append(cnt)
+    return squares
+
+
+def angle_cos(p0, p1, p2):
+    d1, d2 = (p0-p1).astype('float'), (p2-p1).astype('float')
+    return abs( np.dot(d1, d2) / np.sqrt( np.dot(d1, d1)*np.dot(d2, d2) ) )
+
+
 if __name__ == '__main__':
     results_dir = "results/"
 
@@ -89,10 +117,12 @@ if __name__ == '__main__':
       os.makedirs(results_dir)
 
     # Find files to read
-    files_name_list = glob.glob("data/picture_014*") # 1.00
-    # files_name_list = glob.glob("data/picture_045*") # 5.00, carpet
-    # files_name_list = glob.glob("data/picture_043*") # 0.50
-    # files_name_list = glob.glob("data/*") # all
+    # files_name_list = glob.glob("data/picture_014*") # 1 PLN, white
+    files_name_list = glob.glob("data/picture_112*") # 10 PLN, carpet
+    # files_name_list = glob.glob("data/picture_069*") # 1 PLN, table
+    # files_name_list = glob.glob("data/picture_045*") # 5 PLN, carpet
+    # files_name_list = glob.glob("data/picture_043*") # 0.50 PLN, white
+    # files_name_list = glob.glob("data/*") # All images
 
     # Read files
     image_list = list(map(cv2.imread, files_name_list))
@@ -127,7 +157,16 @@ if __name__ == '__main__':
         gray_matrix = np.array(gray_matrix, dtype=np.uint8)
 
         # Find cicles
-        circles = cv2.HoughCircles(gray_matrix, cv2.HOUGH_GRADIENT, 1.1, 270, param1 = 100, param2 = 100, minRadius = 95, maxRadius = 200)
+        # circles = cv2.HoughCircles(gray_matrix, cv2.HOUGH_GRADIENT, 1.1, 270, param1 = 100, param2 = 100, minRadius = 95, maxRadius = 200)
+        circles = None
+
+        # Find banknotes
+        banknote_image = image.copy()
+        squares = find_squares(banknote_image)
+        print("Banknote found = " + str(len(squares)))
+
+        cv2.drawContours(banknote_image, squares, -1, (0, 255, 0), 3)
+        show_image(banknote_image)
 
         output = image.copy()
         overlay = image.copy()
