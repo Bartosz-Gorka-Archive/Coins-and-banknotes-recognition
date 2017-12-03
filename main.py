@@ -55,7 +55,6 @@ def calculate_average_hue(image):
     return avg
 
 
-
 def make_coin_decision(center_avg, ring_avg):
     if(center_avg < 50.0 or ring_avg < 50.0):
         decision = "Skip image"
@@ -76,6 +75,7 @@ def make_coin_decision(center_avg, ring_avg):
             money = 0.50
 
     return decision, money
+
 
 def make_banknote_decision(avg_color):
     if(avg_color > 80.0):
@@ -100,6 +100,7 @@ const_colors = [ (255,0,255),       # PING  - UNKNOWN
                  (142, 161, 226),   # 50 PLN
                  (115, 175, 114),   # 100 PLN
                 ]
+
 
 def find_color(money):
     if(money == 0.50):
@@ -159,8 +160,23 @@ def fix_histogram(image):
 
     return final
 
+
+def check_intersection(cx, cy, cr, rx, ry, rw, rh):
+    if(rx == None):
+        # No intersect - no rectangle found
+        return False
+    else:
+        # Check intersection
+        circle_points = [[cx + r, cy], [cx - r, cy], [cx, cy + r], [cx, cy - r]]
+
+        for x, y in circle_points:
+            if(x >= rx and x <= (rx + rw) and y >= ry and y <= (ry + rh)):
+                return True
+
+        return False
+
 if __name__ == '__main__':
-    results_dir = "results_new_1/"
+    results_dir = "results/"
 
     # Create new directory when not exists
     if not os.path.exists(results_dir):
@@ -197,7 +213,6 @@ if __name__ == '__main__':
         sum = min + max
 
         # Manually set EVERY POINT to [0; 255] - gray scale
-        # TO CHANGE!
         gray_matrix = []
         for line in laplacian:
             row = []
@@ -212,14 +227,24 @@ if __name__ == '__main__':
 
         # Find cicles
         circles = cv2.HoughCircles(gray_matrix, cv2.HOUGH_GRADIENT, 1.1, 270, param1 = 100, param2 = 100, minRadius = 95, maxRadius = 200)
-        # circles = None
+
+        output = image.copy()
+        overlay = image.copy()
+
+        rx = None
+        ry = None
+        rw = None
+        rh = None
 
         # Find banknotes
         banknote_image = image.copy()
         rectangle = find_rectangle(banknote_image)
-        # print("Banknote found = " + str(len(rectangle)))
         for img in rectangle[0:1]:
             x, y, width, height = cv2.boundingRect(img)
+            rx = x
+            ry = y
+            rw = width
+            rh = height
             banknote_to_test = banknote_image[y : y + height, x : x + width].copy()
 
             banknote_analize = banknote_image[y + int(height / 5) : y + 4 * int(height / 5), x + int(width / 3) : x + 3 * int(width / 4)].copy()
@@ -230,20 +255,10 @@ if __name__ == '__main__':
             print("HSV = " + str(test_hsv))
             print("AVG = " + str(test_avg))
 
-            banknote_output = image.copy()
-            banknote_overlay = image.copy()
-
-            cv2.rectangle(banknote_overlay, (x, y), (x + width, y + height), find_color(money), -1)
-            cv2.addWeighted(banknote_overlay, 0.25, banknote_output, 0.75, 0, banknote_output)
-            cv2.rectangle(banknote_output, (x, y), (x + width, y + height), find_color(money), 10)
-            cv2.putText(banknote_output, "{:.2f} PLN".format(money), (np.int(x + width / 2), np.int(y + height / 2)), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (204, 119, 0), 3)
-
-            path = results_dir + "banknote_" + files_name_list[index].split('/')[1]
-            cv2.imwrite(path, banknote_output)
-
-
-        output = image.copy()
-        overlay = image.copy()
+            cv2.rectangle(overlay, (x, y), (x + width, y + height), find_color(money), -1)
+            cv2.addWeighted(overlay, 0.25, output, 0.75, 0, output)
+            cv2.rectangle(output, (x, y), (x + width, y + height), find_color(money), 10)
+            cv2.putText(output, "{:.2f} PLN".format(money), (np.int(x + width / 2), np.int(y + height / 2)), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (204, 119, 0), 3)
 
         if circles is not None:
             # Convert the (x, y) coordinates and radius of the circles to integers
@@ -292,10 +307,14 @@ if __name__ == '__main__':
 
                 # Draw on original image
                 if(money != -1):
-                    cv2.circle(overlay, (x, y), r, find_color(money), -1)
-                    cv2.addWeighted(overlay, 0.25, output, 0.75, 0, output)
-                    cv2.circle(output, (x, y), r, find_color(money), 10)
-                    cv2.putText(output, "{:.2f} PLN".format(money), (np.int(x-r/2),y), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (204, 119, 0), 3)
+                    # We should also check circle not intersect rectangle (rectangle has more priority than circle)
+                    intersect = check_intersection(x, y, r, rx, ry, rw, rh)
+
+                    if not intersect:
+                        cv2.circle(overlay, (x, y), r, find_color(money), -1)
+                        cv2.addWeighted(overlay, 0.25, output, 0.75, 0, output)
+                        cv2.circle(output, (x, y), r, find_color(money), 10)
+                        cv2.putText(output, "{:.2f} PLN".format(money), (np.int(x-r/2),y), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (204, 119, 0), 3)
 
             path = results_dir + files_name_list[index].split('/')[1]
             cv2.imwrite(path, output)
