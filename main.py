@@ -82,7 +82,7 @@ if __name__ == '__main__':
         gray_matrix = np.array(gray_matrix, dtype=np.uint8)
 
         # Find cicles
-        circles = cv2.HoughCircles(gray_matrix, cv2.HOUGH_GRADIENT, 1.2, 150, param1=100, param2=100, minRadius=90, maxRadius=200)
+        circles = cv2.HoughCircles(gray_matrix, cv2.HOUGH_GRADIENT, 1.2, 150, param1 = 100, param2 = 100, minRadius = 90, maxRadius = 200)
 
         if circles is not None:
             # Convert the (x, y) coordinates and radius of the circles to integers
@@ -91,34 +91,43 @@ if __name__ == '__main__':
             # Loop over the circles (x, y, r)
             for cin, (x, y, r) in enumerate(circles):
                 # Crop image
-                crop = image[y-r:y+r,x-r:x+r].copy()
+                crop = image[y - r : y + r, x - r : x + r].copy()
 
                 # Set mask, black background
-                mask = np.zeros((crop.shape[0],crop.shape[1]),dtype=np.uint8)
-                cv2.circle(mask,(r,r),r, (255,255,255), -1, 8, 0)
-                crop[mask[:,:]==0]=0
+                mask = np.zeros((crop.shape[0], crop.shape[1]), dtype = np.uint8)
+                cv2.circle(mask, (r, r), r, (255, 255, 255), -1, 8, 0)
+                crop[mask[:,:] == 0] = 0
 
                 # Prepare center circle radius
                 center_radius = int(r * 0.1) # 10% of original radius
 
                 # Copy original image to new variable
-                center_circle = image[y-center_radius : y+center_radius, x-center_radius : x+center_radius].copy()
+                center_circle = image[y - center_radius : y + center_radius, x - center_radius : x + center_radius].copy()
 
                 # Prepare mask with zeros to cut only circle
-                mask = np.zeros((center_circle.shape[0],center_circle.shape[1]),dtype=np.uint8)
+                mask = np.zeros((center_circle.shape[0], center_circle.shape[1]), dtype = np.uint8)
 
                 # Cut circle from center
-                cv2.circle(mask, (center_radius, center_radius), center_radius, (255,255,255), -1, 8, 0)
+                cv2.circle(mask, (center_radius, center_radius), center_radius, (255, 255, 255), -1, 8, 0)
 
                 # Add black background outside
                 center_circle[mask[:,:] == 0] = 0
 
                 # Show cut center circle
-                show_image(center_circle)
+                # show_image(center_circle)
 
                 # Calculate average of distance between pixels - distance between x and y, x and z, y and z
                 center_circle_avg = calculate_average_distance(center_circle)
-                print("Average = " + str(center_circle_avg))
+                print("Center = " + str(center_circle_avg))
+
+                # Prepare ring to test outside distance
+                ring = crop.copy()
+                mask = np.zeros((crop.shape[0], crop.shape[1]), dtype = np.uint8)
+                cv2.circle(mask, (r, r), r, (255, 255, 255), 20, 8, 0)
+                ring[mask[:,:] == 0] = 0
+
+                ring_avg = calculate_average_distance(ring)
+                print("Ring = " + str(ring_avg))
 
                 path = results_dir + str(cin) + files_name_list[index].split('/')[1]
                 cv2.imwrite(path, crop)
