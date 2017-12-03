@@ -99,7 +99,7 @@ def find_rectangle(img):
                 if len(cnt) == 4 and cnt.all() != 0 and cv2.contourArea(cnt) > 30000 and cv2.isContourConvex(cnt):
                     cnt = cnt.reshape(-1, 2)
                     max_cos = np.max([angle_cos( cnt[i], cnt[(i+1) % 4], cnt[(i+2) % 4] ) for i in range(4)])
-                    if max_cos < 0.1:
+                    if max_cos < 0.05:
                         rectangle.append(cnt)
     return rectangle
 
@@ -118,7 +118,7 @@ if __name__ == '__main__':
 
     # Find files to read
     # files_name_list = glob.glob("data/picture_014*") # 1 PLN, white
-    files_name_list = glob.glob("data/picture_112*") # 10 PLN, carpet
+    files_name_list = glob.glob("data/picture_111*") # 10 PLN, carpet
     # files_name_list = glob.glob("data/picture_069*") # 1 PLN, table
     # files_name_list = glob.glob("data/picture_045*") # 5 PLN, carpet
     # files_name_list = glob.glob("data/picture_043*") # 0.50 PLN, white
@@ -164,9 +164,16 @@ if __name__ == '__main__':
         banknote_image = image.copy()
         rectangle = find_rectangle(banknote_image)
         print("Banknote found = " + str(len(rectangle)))
-        for img in rectangle:
+        for img in rectangle[0:1]:
             x, y, width, height = cv2.boundingRect(img)
-            show_image(banknote_image[y : y + height, x : x + width])
+            banknote_to_test = banknote_image[y : y + height, x : x + width].copy()
+            show_image(banknote_to_test)
+
+            banknote_analize = banknote_image[y + int(height / 5) : y + 4 * int(height / 5), x + int(width / 3) : x + 3 * int(width / 4)].copy()
+            show_image(banknote_analize)
+            test_avg = calculate_average_distance(banknote_analize)
+            print("Test avg = " + str(test_avg))
+
 
         cv2.drawContours(banknote_image, rectangle, -1, (0, 255, 0), 3)
         show_image(banknote_image)
