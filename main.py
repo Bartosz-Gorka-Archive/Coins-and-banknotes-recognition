@@ -17,6 +17,25 @@ def show_image(image, gray = True):
     plt.show()
 
 
+def calculate_average_distance(image):
+    distance_list = []
+    for row in image:
+        for (px, py, pz) in row:
+            # Onlyour pixels, not added black background
+            if(px != 0 and py != 0 and pz != 0):
+                # Calculate distance
+                value = abs(int(px) - int(py)) + abs(int(px) - int(pz)) + abs(int(pz) - int(py))
+
+                # Append calculated value
+                distance_list.append(value)
+
+    # Cast list to numpy array
+    distance_list = np.array(distance_list, dtype="int")
+
+    # Calculate average
+    avg = np.average(distance_list)
+    return avg
+
 if __name__ == '__main__':
     results_dir = "results/"
 
@@ -97,15 +116,9 @@ if __name__ == '__main__':
                 # Show cut center circle
                 show_image(center_circle)
 
-                different_colors_list = []
-                for row in center_circle:
-                    for (px, py, pz) in row:
-                        if(px != 0 and py != 0 and pz != 0):
-                            value = abs(int(px) - int(py)) + abs(int(px) - int(pz)) + abs(int(pz) - int(py))
-                            different_colors_list.append(value)
-
-                different_colors_list = np.array(different_colors_list, dtype="int")
-                print("Average = " + str(np.average(different_colors_list)))
+                # Calculate average of distance between pixels - distance between x and y, x and z, y and z
+                center_circle_avg = calculate_average_distance(center_circle)
+                print("Average = " + str(center_circle_avg))
 
                 path = results_dir + str(cin) + files_name_list[index].split('/')[1]
                 cv2.imwrite(path, crop)
