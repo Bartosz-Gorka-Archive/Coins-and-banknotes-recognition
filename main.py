@@ -91,7 +91,7 @@ def make_banknote_decision(avg_color):
     return decision, money
 
 
-const_colors = [ (255,0,255),       # PING  - UNKNOWN
+const_colors = [ (255,0,255),       # PINK  - UNKNOWN
                  (0,255,0),         # GREEN - 0.50 PLN
                  (255,0,0),         # BLUE  - 1 PLN
                  (0,0,255),         # RED   - 2 PLN
