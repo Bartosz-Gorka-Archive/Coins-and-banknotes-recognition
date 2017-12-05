@@ -56,9 +56,9 @@ def calculate_average_hue(image):
 
 
 def make_coin_decision(center_avg, ring_avg):
-    if(center_avg < 50.0 or ring_avg < 50.0):
+    if(center_avg < 20.0 or ring_avg < 20.0):
         decision = "Skip image"
-        money = -1
+        money = 0
     elif(center_avg < 120.0):
         if(ring_avg < 120.0):
             decision = "1 PLN"
@@ -91,11 +91,11 @@ def make_banknote_decision(avg_color):
     return decision, money
 
 
-const_colors = [ (255,0,255),       # PING  - UNKNOWN
-                 (0,255,0),         # GREEN - 0.50 PLN
-                 (255,0,0),         # BLUE  - 1 PLN
-                 (0,0,255),         # RED   - 2 PLN
-                 (128, 107, 59),    # BROWN - 5 PLN
+const_colors = [ (255, 0, 255),     # UNKNOWN
+                 (0, 255, 0),       # 0.50 PLN
+                 (255, 0, 0),       # 1 PLN
+                 (0, 0, 255),       # 2 PLN
+                 (128, 107, 59),    # 5 PLN
                  (114, 97, 68),     # 10 PLN
                  (142, 161, 226),   # 50 PLN
                  (115, 175, 114),   # 100 PLN
@@ -151,16 +151,6 @@ def angle_cos(p0, p1, p2):
     return abs( np.dot(d1, d2) / np.sqrt( np.dot(d1, d1)*np.dot(d2, d2) ) )
 
 
-def fix_histogram(image):
-    source = cv2.cvtColor(image, cv2.COLOR_BGR2YCrCb)
-    b, g, r = cv2.split(source)
-
-    img = cv2.merge((b, g, r))
-    final = cv2.cvtColor(img, cv2.COLOR_YCrCb2BGR)
-
-    return final
-
-
 def check_intersection(cx, cy, cr, rx, ry, rw, rh):
     if(rx == None):
         # No intersect - no rectangle found
@@ -176,7 +166,7 @@ def check_intersection(cx, cy, cr, rx, ry, rw, rh):
         return False
 
 if __name__ == '__main__':
-    results_dir = "results/"
+    results_dir = "results_new_2/"
 
     # Create new directory when not exists
     if not os.path.exists(results_dir):
@@ -184,20 +174,23 @@ if __name__ == '__main__':
 
     # Find files to read
     # files_name_list = glob.glob("data/picture_014*") # 1 PLN, white
-    files_name_list = glob.glob("data/picture_111*") # 10 PLN, carpet
+    files_name_list = glob.glob("data/picture_112*") # 10 PLN, carpet
     # files_name_list = glob.glob("data/picture_069*") # 1 PLN, table
     # files_name_list = glob.glob("data/picture_045*") # 5 PLN, carpet
     # files_name_list = glob.glob("data/picture_043*") # 0.50 PLN, white
     # files_name_list = glob.glob("data/picture_08*") + glob.glob("data/picture_09*") + glob.glob("data/picture_1*")
     # files_name_list = glob.glob("data/*") # All images
+    # files_name_list = glob.glob("data/*_0*") # All images
 
     # Read files
     image_list = list(map(cv2.imread, files_name_list))
 
     # Iterate on images
     for index, image in enumerate(image_list):
-        image = fix_histogram(image)
-        print(str(files_name_list[index]))
+        # Prepare image results
+        output = image.copy()
+        overlay = image.copy()
+
         # Convert image to gray
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
@@ -207,29 +200,13 @@ if __name__ == '__main__':
         # Edge detection with Laplacian Derivatives
         laplacian = cv2.Laplacian(gray, cv2.CV_64F)
 
-        # Calculate min, max value
-        min = math.fabs(np.amin(laplacian))
-        max = math.fabs(np.amax(laplacian))
-        sum = min + max
-
-        # Manually set EVERY POINT to [0; 255] - gray scale
-        gray_matrix = []
-        for line in laplacian:
-            row = []
-            for cell in line:
-                value = int(((cell + min) / sum) * 255)
-                row.append(value)
-
-            gray_matrix.append(row)
-
-        # Set matrix type, required in HoughCircles
-        gray_matrix = np.array(gray_matrix, dtype=np.uint8)
+        laplacian_plus = np.fabs(laplacian)
+        laplacian_normalized = cv2.normalize(laplacian_plus, None, 0, 700, cv2.NORM_MINMAX)
+        laplacian_normalized[ laplacian_normalized[ : , : ] > 255 ] = 255
+        laplacian_normalized = np.array(laplacian_normalized, dtype = np.uint8)
 
         # Find cicles
-        circles = cv2.HoughCircles(gray_matrix, cv2.HOUGH_GRADIENT, 1.1, 270, param1 = 100, param2 = 100, minRadius = 95, maxRadius = 200)
-
-        output = image.copy()
-        overlay = image.copy()
+        circles = cv2.HoughCircles(laplacian_normalized, cv2.HOUGH_GRADIENT, 1.1, 270, param1 = 100, param2 = 100, minRadius = 95, maxRadius = 200)
 
         rx = None
         ry = None
@@ -250,10 +227,6 @@ if __name__ == '__main__':
             banknote_analize = banknote_image[y + int(height / 5) : y + 4 * int(height / 5), x + int(width / 3) : x + 3 * int(width / 4)].copy()
             test_avg = calculate_average_distance(banknote_analize)
             decision, money = make_banknote_decision(test_avg)
-
-            test_hsv = calculate_average_hue(banknote_analize)
-            print("HSV = " + str(test_hsv))
-            print("AVG = " + str(test_avg))
 
             cv2.rectangle(overlay, (x, y), (x + width, y + height), find_color(money), -1)
             cv2.addWeighted(overlay, 0.25, output, 0.75, 0, output)
@@ -291,7 +264,6 @@ if __name__ == '__main__':
 
                 # Calculate average of distance between pixels - distance between x and y, x and z, y and z
                 center_circle_avg = calculate_average_distance(center_circle)
-                # print("Center = " + str(center_circle_avg))
 
                 # Prepare ring to test outside distance
                 ring = crop.copy()
@@ -300,13 +272,10 @@ if __name__ == '__main__':
                 ring[mask[:,:] == 0] = 0
 
                 ring_avg = calculate_average_distance(ring)
-                # print("Ring = " + str(ring_avg))
-
                 decision, money = make_coin_decision(center_circle_avg, ring_avg)
-                # print("Decision = " + decision)
 
                 # Draw on original image
-                if(money != -1):
+                if(money != 0):
                     # We should also check circle not intersect rectangle (rectangle has more priority than circle)
                     intersect = check_intersection(x, y, r, rx, ry, rw, rh)
 
