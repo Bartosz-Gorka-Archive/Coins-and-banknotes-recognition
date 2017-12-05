@@ -2,10 +2,10 @@
 \usepackage[utf8]{inputenc}
 \usepackage{indentfirst}
 \usepackage{polski}
-\usepackage{graphicx}
 \usepackage{float}
 \usepackage{hyperref}
-
+\usepackage[caption = false]{subfig}
+\usepackage[final]{graphicx}
 
 
 \title{System rozpoznawania wybranych monet}
@@ -38,41 +38,46 @@ Ograniczając projekt poprzez wyeliminowanie sztucznej inteligencji, system mia�
 \section{Ograniczenia}
 Przy przygotowaniu realizacji zabronione było wykorzystywanie w pełni gotowych rozwiązań ułatwiających wyszukiwanie monet i banknotów na obrazach. Zabronione było wykorzystanie \textit{klasyfikatora Haara}, który rozwiązałby większość problemów. Dodatkowo wszelkiego rodzaju \textit{OCR} również był zakazany.
 
-Jako ułatwienie przyjęto ograniczenie analizowanych monet i banknotów do unikatowych kolorystycznie tj. \textit{0,50 PLN, 1 PLN, 2 PLN, 5 PLN, 10 PLN, 50 PLN, 100 PLN}.
+Jako ułatwienie przyjęto ograniczenie analizowanych monet i banknotów do unikatowych kolorystycznie tj. \textit{0,05 PLN, 1 PLN, 2 PLN, 5 PLN, 10 PLN, 50 PLN, 100 PLN}.
 
 \section{Historia pracy nad algorytmem}
 Przygotowanie algorytmu do wykrywania obiektów na obrazie nie jest rzeczą trywialną. Wiele czynników może negatywnie oddziaływać na proces analizy. Są to między innymi różnice w naświetleniu obiektu, refleksy, czy też sama jakość zdjęcia.
-Prace rozpoczęto od wykrywania monet na obrazie, aby następnie poddać analizie i określić z jaką monetą mamy do czynienia. 
+Prace rozpoczęto od wykrywania monet na obrazie, aby następnie poddać analizie i określić z jaką monetą mamy do czynienia.
 
-Korzystając z różnej struktury monety (co szczególnie widoczne jest po zastosowaniu algorytmu detekcji krawędzi - \textit{Sobel}) pragnęliśmy zastosować wiedzę o  \textit{momentach Hu} oraz \textit{filtru Gabora} do analizy tekstury.
-Niestety obydwa wyżej wymienione sposoby wymagają jasno określonego wzorca, który jest możliwy do osiągnięcia. W przypadku monet, nawet sztucznie wygenerowane przekształcenia, nie były wystarczająco wierne w stosunku do oryginałów. Problem spowodowany był precyzją w wycinaniu obiektu z obrazu, gdyż różnica kilku pikseli znacząco wpływała na wynik porównania.
+Na sam początek zaproponowano, aby odróżniac monety po kolorach, co w pierwotnej wersji okazało się bardzo słabe (a dokładniej implementacja tego pomysłu zawiodła). Przeglądając dalej dostępne funkcje w dokumentacji oraz prace naukowe o przetwarzaniu obrazów, chcieliśmy skupić się na różnych fakturach monet. Korzystając z różnej struktury monety (co szczególnie widoczne jest po zastosowaniu algorytmu detekcji krawędzi - \textit{Sobel}) pragnęliśmy zastosować wiedzę o  \textit{momentach Hu} oraz \textit{filtru Gabora} do analizy tekstury.
+Niestety obydwa wyżej wymienione sposoby wymagają jasno określonego wzorca, który nie jest możliwy do osiągnięcia w naszych zastosowaniach. W przypadku monet, nawet sztucznie wygenerowane przekształcenia, nie były wystarczająco wierne w stosunku do oryginałów. Problem spowodowany był precyzją w wycinaniu obiektu z obrazu, gdyż różnica kilku pikseli znacząco wpływała na wynik porównania.
 
-Po analizie niepowodzenia z implementacją tak rozbudowanego porównania, postanowiliśmy zmienić sam sposób podejścia do wykrytego obiektu. Zamiast porównywać fakturę, sprawdzeniu poddaliśmy kolory. Pozwoliło to wyprowadzenie zależności dotyczących klasy obiektu.
+Po analizie niepowodzenia z implementacją tak rozbudowanego porównania, postanowiliśmy zmienić sam sposób podejścia do wykrytego obiektu. Zamiast porównywać fakturę, powróciliśmy do sprawdzenia kolorów, ale z innym nastawieniem (na różnice między kolorami, a nie ich wartości w wybranej przestrzeni barw). Pozwoliło to wyprowadzenie zależności dotyczących klasy obiektu.
 
 \section{Analiza algorytmu}
-\subsection{Podstawowe działanie}
-Kod programu był pisany z myślą o łatwej jego edycji w przyszłości. Użyte dodatkowe funkcje pozwalają wyeliminować powtórzenia kodu.
-
-Działanie algorytmu rozpoczyna się od wczytania listy obrazów jakie podlegają analizie. Następnie każdy z nich jest analizowany. Na początku konieczna jest konwersja przestrzeni barw z BGR używanej przez OpenCV na skalę szarości wymaganą przez funkcję detekcji krawędzi z wykorzystaniem operatora Laplace’a. Efekty działania można zaobserwować poniżej.
-
-\begin{center}
-    \includegraphics[width=\textwidth]{Laplacian.png}
-\end{center}
-
 \subsection{Wyszukiwanie monet}
 
-Wyszukiwanie monet odbywa się dzięki użyciu funkcji \textit{HoughCircles} z biblioteki OpenCV. Wykorzystanie \textit{transformacji Hougha} pozwala na wykrywanie regularnych kształtów, w tym okręgów, które są dla nas najbardziej istotne.
+Wyszukiwanie monet odbywa się dzięki użyciu funkcji \textit{findContours} z biblioteki OpenCV. Wykorzystanie tej funkcji pozwala na wykrywanie kształtów, w tym okręgów, które są dla nas najbardziej istotne, poprzez funkcję \textit{minEnclosingCircle}.
 Niestety sama funkcja zwraca bardzo wiele obiektów, które trzeba poddać analizie w celu eliminacji błędów. Sytuację bez tego kroku można zaobserwować poniżej.
 
 \begin{center}
     \includegraphics[width=\textwidth]{Objects.png}
 \end{center}
 
+Aby tego uniknąć, w algorytmie zastosowano różne opcje wykrywania obrazu i jego parametrów. W zależności od średniej wartości kanału V w przestrzeni barw \textit{HSV} algorytm wybiera odpowiedni preprocesing obrazu.
+
+Dla ciemnych obrazów $V_avg < 100$ wprowadza się dużą korekcję gamma \textit{15} oraz skalowanie intesywności obrazu w zależności od percentyli.
+W tym miejscu otrzymujemy obraz binarny (czarne tło oraz białe obiekty).
+Następnie ścieżka wykrywania kół rozchodzi się na dwie ścieżki. Jedna przetwarza obraz za pomocą operacji morfologicznych, a druga używa funkcji \textit{Canny} oraz operacji morfologicznych. Wynik tych dwóch ścieżek jest łączony (operator \&) i przekazywany do funkcji \textit{findContours}.
+
+Dla jasnych obrazów $V_avg >= 100$ wprowadza się przeciwną korekcję gammy \textit{0.7}. Dalej algorytm korzysta z funkcji \textit{adaptiveThreshold} z parametrem \textit{cv2.ADAPTIVE\_THRESH\_GAUSSIAN\_C} oraz operacji morfologicznych. Wynik przekazywany jest do funkcji \textit{findContours}.
+
+Wykrywanie kół odbywa się poprzez funkcję \textit{minEnclosingCircle} i sprawdzenie czy pole wykrytej figury nie jest zbyt małe, albo zbyt duże, oraz czy jest w przybliżeniu równe polu koła $\Pi * r^2$. Pozwala to na pominięcie kształtów, które zostały po wstępnym przetworzeniu obrazu, tak jak na obrazkach poniżej.
+
+\begin{center}
+    \includegraphics[width=\textwidth]{Area.png}
+    \includegraphics[width=\textwidth]{bb_000.jpg}
+\end{center}
+
 \subsection{Wyszukiwanie banknotów}
-Poszukiwanie konturów, które mogą być potencjalnymi prostokątami zawierającymi banknoty, wymaga sprawdzenia wielu warunków. 
+Poszukiwanie konturów, które mogą być potencjalnymi prostokątami zawierającymi banknoty, wymaga sprawdzenia wielu warunków.
 
-Obraz podawany jest detekcji krawędzi \textit{Canny}, z wartościami progowania \textit{0, 50} oraz wielkością maski \textit{5x5} pikseli. Rezultat działania poddany jest dylatacji, dzięki której wyszczególniamy nasze krawędzi. 
-
+Obraz podawany jest detekcji krawędzi \textit{Canny}, z wartościami progowania \textit{0, 50} oraz wielkością maski \textit{5x5} pikseli. Rezultat działania poddany jest dylatacji, dzięki której wyszczególniamy nasze krawędzi.
 
 Banknot \textit{10 PLN} w kolejnych krokach algorytmu.
 \begin{center}
@@ -107,7 +112,7 @@ W drodze eksperytmu z przygotowanymi zdjęciami, wybrano następujące zakresy:
 
 $$
 decyzja = \left\{\begin{array}{ll}
-\textrm{zignorowanie} & \textrm{gdy średnia $<$ 25}\\
+\textrm{zignorowanie} & \textrm{gdy średnia $<$ 20}\\
 \textrm{srebro} & \textrm{gdy średnia $<$ 120}\\
 \textrm{złoto} & \textrm{gdy średnia $\geq$ 120 }
 \end{array} \right.
@@ -134,7 +139,8 @@ decyzja = \left\{\begin{array}{ll}
 $$
 
 \section{Wnioski}
-Analizując zachowanie się algorytmu dla wszystkich przygotowanych zdjęć, można zauważyć jego niedoskonałości wymagające poprawy. Pierwszą rzeczą jest sposób wykrywania potencjalnych monet.
+Analizując zachowanie się algorytmu dla wszystkich przygotowanych zdjęć, można zauważyć jego niedoskonałości wymagające poprawy. Pierwszą rzeczą jest sposób wykrywania potencjalnych monet czy banknotów (ogólnie lepsze wykrywanie krawędzi tego czego chcemy).
+Następnie można by poprawić detekcję monet, ale jest to trudne ponieważ kolory zdjęcia są przeróżne (nie mówiąc już o na przykład kolorowym światle z lapmki).
 
 Prowadząc eksperymenty z ustawieniami programu, przygotowanymi zdjęciami testowymi czy zastosowanymi rozwiązaniami, można zauważyć potrzebę użycia sztucznej inteligencji w projekcie.
 Rozpoznawanie obiektów dla człowieka wydaje się rzeczą naturalną, niestety dla komputera nie jest to trywialny problem. Próba podejścia do zagadnienia bazując wyłącznie na kolorach nie spełnia naszych oczekiwań, gdyż wiemy jak łatwo spreparować zdjęcia dla których algorytm odniesie sromotną porażkę.
@@ -142,15 +148,84 @@ Rozpoznawanie obiektów dla człowieka wydaje się rzeczą naturalną, niestety 
 \section{Analizowane przypadki}
 
 \subsection{Pomyślne rozpoznanie}
+\begin{figure}[ht!]
+     \begin{center}
+        \subfigure[1]{
+            \label{fig:first}
+            \includegraphics[width=0.4\textwidth]{good_001.jpg}
+        }
+        \subfigure[2]{
+           \label{fig:second}
+           \includegraphics[width=0.4\textwidth]{good_002.jpg}
+        }\\
+        \subfigure[3]{
+            \label{fig:third}
+            \includegraphics[width=0.4\textwidth]{good_004.jpg}
+        }
+        \subfigure[4]{
+            \label{fig:fourth}
+            \includegraphics[width=0.4\textwidth]{good_005.jpg}
+        }
+    \end{center}
+    \caption{Pomyślnie rozpoznane obrazki (1)}
+   \label{fig:subfigures}
+\end{figure}
+
+
+\begin{figure}[ht!]
+     \begin{center}
+        \subfigure[1]{
+            \label{fig:first}
+            \includegraphics[width=0.4\textwidth]{good_006.jpg}
+        }
+        \subfigure[2]{
+           \label{fig:second}
+           \includegraphics[width=0.4\textwidth]{good_007.jpg}
+        }\\
+        \subfigure[3]{
+            \label{fig:third}
+            \includegraphics[width=0.4\textwidth]{good_008.jpg}
+        }
+        \subfigure[4]{
+            \label{fig:fourth}
+            \includegraphics[width=0.4\textwidth]{good_009.jpg}
+        }
+    \end{center}
+    \caption{Pomyślnie rozpoznane obrazki (2)}
+   \label{fig:subfigures}
+\end{figure}
+
 
 \subsection{Niepomyślne rozpoznania}
-
+\begin{figure}[ht!]
+     \begin{center}
+        \subfigure[1]{
+            \label{fig:first}
+            \includegraphics[width=0.4\textwidth]{bad_001.jpg}
+        }
+        \subfigure[2]{
+           \label{fig:second}
+           \includegraphics[width=0.4\textwidth]{bad_002.jpg}
+        }\\
+        \subfigure[3]{
+            \label{fig:third}
+            \includegraphics[width=0.4\textwidth]{bad_003.jpg}
+        }
+        \subfigure[4]{
+            \label{fig:fourth}
+            \includegraphics[width=0.4\textwidth]{bad_005.jpg}
+        }
+    \end{center}
+    \caption{Błędnie rozpoznane obrazki}
+   \label{fig:subfigures}
+\end{figure}
 \section{Bibliografia}
 
 Przygotując projekt, bazowaliśmy na wiedzy dostępnej w Internecie. Szczególnie przydatne okazały się:
 
 \begin{itemize}
     \item \href{https://docs.opencv.org/3.0-beta/index.html}{OpenCV documentation 3.0}
+    \item \href{http://scikit-image.org/docs/dev/}{Skimage 0.14-dev documentation}
     \item \href{https://stackoverflow.com/}{Stack Overflow}
     \item \href{https://google.com/}{Uncle Google}
 \end{itemize}
