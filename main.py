@@ -8,13 +8,18 @@ from scipy.ndimage.morphology import binary_fill_holes
 from scipy import ndimage
 from skimage import morphology
 from skimage import img_as_ubyte
+from skimage.feature import canny
+from skimage import filters,io,color,exposure
+from skimage.morphology import binary_dilation,square,disk,diamond,binary_opening
 
-def show_image(image, gray = True):
+def show_image(image, gray = True,bgr = True):
+    out = image.copy()
     if gray == True:
         plt.imshow(image, cmap = "gray")
     else:
-        rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        plt.imshow(rgb_image)
+        if bgr:
+          out = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        plt.imshow(out)
     plt.show()
 
 
@@ -72,8 +77,8 @@ def make_coin_decision(center_avg, ring_avg):
             decision = "5 PLN"
             money = 5.00
         else:
-            decision = "0.50 PLN"
-            money = 0.50
+            decision = "0.05 PLN"
+            money = 0.05
 
     return decision, money
 
@@ -104,7 +109,7 @@ const_colors = [ (255,0,255),       # PINK  - UNKNOWN
 
 
 def find_color(money):
-    if(money == 0.50):
+    if(money == 0.05):
         color = const_colors[1]
     elif(money == 1.00):
         color = const_colors[2]
@@ -173,17 +178,53 @@ def find_rectangle(img):
 
 def find_circles(img):
     circle = []
-    #out = img.copy()
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    thresh = cv2.adaptiveThreshold(gray,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,cv2.THRESH_BINARY_INV,33,3)
-    kernel = np.ones((9,9),np.uint8)
-    thresh = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel)
-    kernel = np.ones((19,19),np.uint8)
-    thresh = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel)
-    th_1 = cv2.normalize(thresh, None, 0, 1, cv2.NORM_MINMAX)
-    th_1 = binary_fill_holes(th_1)
-    th_1 = morphology.remove_small_objects(th_1, 8000)
-    cv_image = img_as_ubyte(th_1)
+    mean_v = np.average(cv2.cvtColor(img,cv2.COLOR_BGR2HSV)[:,:,2])
+    gam = 1
+    if(mean_v < 100): #dark images
+      gam = 15
+      rgb = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
+      rgb = filters.gaussian(rgb, sigma=1.8,multichannel=True)
+      pMin = np.percentile(rgb,25,interpolation='midpoint')
+      pMax = np.percentile(rgb,100-5,interpolation='midpoint')
+      rgb = exposure.rescale_intensity(rgb,in_range=(pMin,pMax))
+      rgb = exposure.adjust_gamma(rgb,gamma=gam)
+      rgb = color.rgb2hsv(rgb)
+      blackWhite = 1-rgb[:,:,2]
+      blackWhite[blackWhite[:,:]!=0]=1
+      # make edge by dilatation and morphology
+      dil = binary_dilation(blackWhite, square(3))
+      dil = 1 - dil
+      dil = morphology.remove_small_holes(dil, 12000)
+      dil = morphology.remove_small_objects(dil, 3000)
+      dil = binary_dilation(dil, disk(7))
+      # make edge by canny and morphology
+      edges = canny(blackWhite,sigma=1.2)
+      show_image(edges)
+      edges = binary_dilation(edges, disk(3))
+      edges = morphology.remove_small_objects(edges, 1000)
+      edges = binary_opening(edges, disk(3))
+      edges = binary_dilation(edges, disk(5))
+      edges = binary_fill_holes(edges)
+      edges = morphology.remove_small_objects(edges, 8000)
+
+      cv_image = img_as_ubyte(edges & dil)
+      show_image(cv_image)
+    else: #bright images
+      gam = 0.7
+      # make edge by adaptiveThreshold and morphology
+      gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+      thresh = cv2.adaptiveThreshold(gray,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,cv2.THRESH_BINARY_INV,33,3)
+      kernel = np.ones((9,9),np.uint8)
+      thresh = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel)
+      kernel = np.ones((19,19),np.uint8)
+      thresh = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel)
+      th_1 = cv2.normalize(thresh, None, 0, 1, cv2.NORM_MINMAX)
+      th_1 = binary_fill_holes(th_1)
+      th_1 = morphology.remove_small_objects(th_1, 8000)
+      th_1 = morphology.binary_dilation(th_1,disk(7))
+
+      cv_image = img_as_ubyte(th_1)
+      #show_image(cv_image)
     _, contours, _ = cv2.findContours(cv_image , cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     if contours is not None:
         for cnt in contours:
@@ -193,7 +234,7 @@ def find_circles(img):
                 area = cv2.contourArea(cnt)
                 if (8000 < area <200000):
                     (cx, cy), radius = cv2.minEnclosingCircle(cnt)
-                    radius=radius*0.8
+                    radius=radius*0.95
                     circleArea = radius * radius * np.pi
                     ratio = area/circleArea
                     if(ratio > 0.65):
@@ -258,59 +299,39 @@ if __name__ == '__main__':
     # files_name_list = glob.glob("data/picture_043*") # 0.50 PLN, white
     # files_name_list = glob.glob("data/picture_08*") + glob.glob("data/picture_09*") + glob.glob("data/picture_1*")
     # files_name_list = glob.glob("data/*") # All images
-    files_name_list = glob.glob("data/bb*")
+    files_name_list = glob.glob("data/*")
     # Read files
     image_list = list(map(cv2.imread, files_name_list))
 
     # Iterate on images
     for index, image in enumerate(image_list):
+        print(str(files_name_list[index]))
         all_money_list = [0]
         output = image.copy()
         overlay = image.copy()
 
-        #show_image(image,False)
         image = fix_histogram(image)
-        #show_image(image,False)
-        gamma = correctGamma(image)
-        #show_image(gamma,False)
-        print(str(files_name_list[index]))
+
+        #gamma = correctGamma(image)
+
         # Convert image to gray
-        gray = cv2.cvtColor(gamma, cv2.COLOR_BGR2GRAY)
+        #gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         # Remove noise
         # removed_noise = cv2.GaussianBlur(gray, (3,3), 0)
 
-        # Edge detection with Laplacian Derivatives
-        laplacian = cv2.Laplacian(gray, cv2.CV_64F)
-
-        # # Calculate min, max value
-        # min = math.fabs(np.amin(laplacian))
-        # max = math.fabs(np.amax(laplacian))
-        # sum2 = min + max #sum -> sum2 , when sum there was error with built-in function sum
+        # # Edge detection with Laplacian Derivatives
+        # laplacian = cv2.Laplacian(gray, cv2.CV_64F)
         #
-        # # Manually set EVERY POINT to [0; 255] - gray scale
-        # gray_matrix = []
-        # for line in laplacian:
-        #     row = []
-        #     for cell in line:
-        #         value = int(((cell + min) / sum2) * 255)
-        #         row.append(value)
-        #
-        #     gray_matrix.append(row)
-        #
-        # # Set matrix type, required in HoughCircles
-        # gray_matrix = np.array(gray_matrix, dtype=np.uint8)
-        # show_image(gray_matrix,True)
-        laplacian_plus = np.fabs(laplacian)
-        laplacian_normalized = cv2.normalize(laplacian_plus, None, 0, 600, cv2.NORM_MINMAX)
-        laplacian_normalized[laplacian_normalized[:,:]>255]=255
-        laplacian_normalized = np.array(laplacian_normalized, dtype=np.uint8)
+        # laplacian_plus = np.fabs(laplacian)
+        # laplacian_normalized = cv2.normalize(laplacian_plus, None, 0, 600, cv2.NORM_MINMAX)
+        # laplacian_normalized[laplacian_normalized[:,:]>255]=255
+        # laplacian_normalized = np.array(laplacian_normalized, dtype=np.uint8)
 
 
 
         # Find cicles
         #circles = cv2.HoughCircles(laplacian_normalized , cv2.HOUGH_GRADIENT, 1.1, 270, param1 = 60, param2 = 100, minRadius = 95, maxRadius = 200)
         circles = find_circles(image)
-
 
         rx = None
         ry = None
