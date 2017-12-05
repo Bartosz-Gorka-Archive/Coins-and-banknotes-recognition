@@ -91,7 +91,7 @@ def make_banknote_decision(avg_color):
 
 
 const_colors = [ (255, 0, 255),     # UNKNOWN
-                 (0, 255, 0),       # 0.50 PLN
+                 (0, 255, 0),       # 0.05 PLN
                  (255, 0, 0),       # 1 PLN
                  (0, 0, 255),       # 2 PLN
                  (128, 107, 59),    # 5 PLN
