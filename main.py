@@ -7,11 +7,10 @@ from matplotlib import pyplot as plt
 
 
 def show_image(image, gray = True):
-    rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-
     if gray == True:
-        plt.imshow(rgb_image, cmap = "gray")
+        plt.imshow(image, cmap = "gray")
     else:
+        rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         plt.imshow(rgb_image)
 
     plt.show()
