@@ -6,18 +6,17 @@ import numpy as np
 from matplotlib import pyplot as plt
 from scipy.ndimage.morphology import binary_fill_holes
 from scipy import ndimage
-from skimage import morphology
-from skimage import img_as_ubyte
+from skimage import img_as_ubyte, morphology, filters, io, color, exposure
 from skimage.feature import canny
-from skimage import filters,io,color,exposure
-from skimage.morphology import binary_dilation,square,disk,diamond,binary_opening
+from skimage.morphology import binary_dilation, square, disk, diamond, binary_opening
 
-def show_image(image, gray = True,bgr = True):
+
+def show_image(image, gray = True, BGR = True):
     out = image.copy()
     if gray == True:
         plt.imshow(image, cmap = "gray")
     else:
-        if bgr:
+        if BGR:
           out = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         plt.imshow(out)
     plt.show()
@@ -26,32 +25,14 @@ def show_image(image, gray = True,bgr = True):
 def calculate_average_distance(image):
     distance_list = []
     for row in image:
-        for (px, py, pz) in row:
+        for (b, g, r) in row:
             # Only our pixels, not added black background
-            if(px != 0 and py != 0 and pz != 0):
+            if(b != 0 and g != 0 and r != 0):
                 # Calculate distance
-                value = abs(int(px) - int(py)) + abs(int(px) - int(pz)) + abs(int(pz) - int(py))
+                value = abs(int(b) - int(g)) + abs(int(b) - int(r)) + abs(int(r) - int(g))
 
                 # Append calculated value
                 distance_list.append(value)
-
-    # Cast list to numpy array
-    distance_list = np.array(distance_list, dtype="int")
-
-    # Calculate average
-    avg = np.average(distance_list)
-    return avg
-
-
-def calculate_average_hue(image):
-    hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-
-    distance_list = []
-    for row in image:
-        for (h, s, v) in row:
-            # Only our pixels, not added black background
-            if(h != 0 and s != 0 and v != 0):
-                distance_list.append(h)
 
     # Cast list to numpy array
     distance_list = np.array(distance_list, dtype="int")
@@ -127,23 +108,25 @@ def find_color(money):
         color = const_colors[0]
     return color[::-1]
 
-def intersection_boolean(a,b):
-  if(a[0]<=b[0]):
-    w = b[0] - (a[0]+a[2])
-  else:
-    w = a[0] - (b[0]+b[2])
-  if(a[1]<=b[1]):
-    h = b[1] - (a[1]+a[3])
-  else:
-    h = a[1] - (b[1]+b[3])
 
-  if w<=0 or h<=0:
-    return True
-  else:
-    return False
+def intersection_boolean(a, b):
+    if (a[0] <= b[0]):
+        w = b[0] - (a[0] + a[2])
+    else:
+        w = a[0] - (b[0] + b[2])
+    if (a[1] <= b[1]):
+        h = b[1] - (a[1] + a[3])
+    else:
+        h = a[1] - (b[1] + b[3])
+
+    if (w <= 0 or h <= 0):
+        return True
+    else:
+        return False
+
 
 def find_rectangle(img):
-    max_area = (img.shape[0]-30)*(img.shape[1]-30)
+    max_area = (img.shape[0] - 30) * (img.shape[1] - 30)
     img = cv2.GaussianBlur(img, (5, 5), 0)
     rectangle = []
     for gray in cv2.split(img):
@@ -181,51 +164,52 @@ def find_circles(img):
     mean_v = np.average(cv2.cvtColor(img,cv2.COLOR_BGR2HSV)[:,:,2])
     gam = 1
     if(mean_v < 100): #dark images
-      gam = 15
-      rgb = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
-      rgb = filters.gaussian(rgb, sigma=1.8,multichannel=True)
-      pMin = np.percentile(rgb,25,interpolation='midpoint')
-      pMax = np.percentile(rgb,100-5,interpolation='midpoint')
-      rgb = exposure.rescale_intensity(rgb,in_range=(pMin,pMax))
-      rgb = exposure.adjust_gamma(rgb,gamma=gam)
-      rgb = color.rgb2hsv(rgb)
-      blackWhite = 1-rgb[:,:,2]
-      blackWhite[blackWhite[:,:]!=0]=1
-      # make edge by dilatation and morphology
-      dil = binary_dilation(blackWhite, square(3))
-      dil = 1 - dil
-      dil = morphology.remove_small_holes(dil, 12000)
-      dil = morphology.remove_small_objects(dil, 3000)
-      dil = binary_dilation(dil, disk(7))
-      # make edge by canny and morphology
-      edges = canny(blackWhite,sigma=1.2)
-      show_image(edges)
-      edges = binary_dilation(edges, disk(3))
-      edges = morphology.remove_small_objects(edges, 1000)
-      edges = binary_opening(edges, disk(3))
-      edges = binary_dilation(edges, disk(5))
-      edges = binary_fill_holes(edges)
-      edges = morphology.remove_small_objects(edges, 8000)
+        gam = 15
+        rgb = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
+        rgb = filters.gaussian(rgb, sigma=1.8,multichannel=True)
+        pMin = np.percentile(rgb,25,interpolation='midpoint')
+        pMax = np.percentile(rgb,100-5,interpolation='midpoint')
+        rgb = exposure.rescale_intensity(rgb,in_range=(pMin,pMax))
+        rgb = exposure.adjust_gamma(rgb,gamma=gam)
+        rgb = color.rgb2hsv(rgb)
+        blackWhite = 1-rgb[:,:,2]
+        blackWhite[blackWhite[:,:]!=0]=1
 
-      cv_image = img_as_ubyte(edges & dil)
-      show_image(cv_image)
+        # make edge by dilatation and morphology
+        dil = binary_dilation(blackWhite, square(3))
+        dil = 1 - dil
+        dil = morphology.remove_small_holes(dil, 12000)
+        dil = morphology.remove_small_objects(dil, 3000)
+        dil = binary_dilation(dil, disk(7))
+
+        # make edge by canny and morphology
+        edges = canny(blackWhite,sigma=1.2)
+        edges = binary_dilation(edges, disk(3))
+        edges = morphology.remove_small_objects(edges, 1000)
+        edges = binary_opening(edges, disk(3))
+        edges = binary_dilation(edges, disk(5))
+        edges = binary_fill_holes(edges)
+        edges = morphology.remove_small_objects(edges, 8000)
+
+        cv_image = img_as_ubyte(edges & dil)
     else: #bright images
-      gam = 0.7
-      # make edge by adaptiveThreshold and morphology
-      gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-      thresh = cv2.adaptiveThreshold(gray,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,cv2.THRESH_BINARY_INV,33,3)
-      kernel = np.ones((9,9),np.uint8)
-      thresh = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel)
-      kernel = np.ones((19,19),np.uint8)
-      thresh = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel)
-      th_1 = cv2.normalize(thresh, None, 0, 1, cv2.NORM_MINMAX)
-      th_1 = binary_fill_holes(th_1)
-      th_1 = morphology.remove_small_objects(th_1, 8000)
-      th_1 = morphology.binary_dilation(th_1,disk(7))
+        gam = 0.7
+        # make edge by adaptiveThreshold and morphology
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        thresh = cv2.adaptiveThreshold(gray,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,cv2.THRESH_BINARY_INV,33,3)
+        kernel = np.ones((9,9),np.uint8)
+        thresh = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel)
+        kernel = np.ones((19,19),np.uint8)
+        thresh = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel)
+        th_1 = cv2.normalize(thresh, None, 0, 1, cv2.NORM_MINMAX)
+        th_1 = binary_fill_holes(th_1)
+        th_1 = morphology.remove_small_objects(th_1, 8000)
+        th_1 = morphology.binary_dilation(th_1,disk(7))
 
-      cv_image = img_as_ubyte(th_1)
-      #show_image(cv_image)
-    _, contours, _ = cv2.findContours(cv_image , cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        cv_image = img_as_ubyte(th_1)
+
+        _, contours, _ = cv2.findContours(cv_image , cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
     if contours is not None:
         for cnt in contours:
             approx = cv2.approxPolyDP(cnt, .03 * cv2.arcLength(cnt, True), True)
@@ -238,9 +222,7 @@ def find_circles(img):
                     circleArea = radius * radius * np.pi
                     ratio = area/circleArea
                     if(ratio > 0.65):
-                      circle.append((int(cx),int(cy),int(radius)))
-                      #cv2.circle(out, (int(cx), int(cy)), int(radius), (0,0,0), 10)
-    #show_image(out,False)
+                        circle.append((int(cx),int(cy),int(radius)))
     return circle
 
 def angle_cos(p0, p1, p2):
@@ -263,33 +245,28 @@ def check_intersection(cx, cy, cr, rx, ry, rw, rh):
         return False
 
 def correctGamma(img):
-  hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-  imgfloat = cv2.normalize(hsv.astype('float'), None, 0.0, 1.0, cv2.NORM_MINMAX)
-  mean = np.mean(imgfloat[:,:,2])
-  median = np.median(imgfloat[:,:,2])
-  value = (mean+median)/2
-  img2 = img/255.0
-  correction = 1-(0.5-value)*1.5
-  out = cv2.pow(img2,correction)
-  out = np.uint8(out*255)
-  return out
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    imgfloat = cv2.normalize(hsv.astype('float'), None, 0.0, 1.0, cv2.NORM_MINMAX)
+    mean = np.mean(imgfloat[:,:,2])
+    median = np.median(imgfloat[:,:,2])
+    value = (mean + median) / 2
+    img2 = img/255.0
+    correction = 1 - (0.5 - value) * 1.5
+    out = cv2.pow(img2,correction)
+    out = np.uint8(out*255)
+
+    return out
 
 if __name__ == '__main__':
-    results_dir = "results_new_2/"
+    results_dir = "results_out/"
 
     # Create new directory when not exists
     if not os.path.exists(results_dir):
       os.makedirs(results_dir)
 
     # Find files to read
-    # files_name_list = glob.glob("data/picture_014*") # 1 PLN, white
-    files_name_list = glob.glob("data/picture_112*") # 10 PLN, carpet
-    # files_name_list = glob.glob("data/picture_069*") # 1 PLN, table
-    # files_name_list = glob.glob("data/picture_045*") # 5 PLN, carpet
-    # files_name_list = glob.glob("data/picture_043*") # 0.50 PLN, white
-    # files_name_list = glob.glob("data/picture_08*") + glob.glob("data/picture_09*") + glob.glob("data/picture_1*")
-    # files_name_list = glob.glob("data/*") # All images
     files_name_list = glob.glob("data/*")
+
     # Read files
     image_list = list(map(cv2.imread, files_name_list))
 
@@ -300,27 +277,7 @@ if __name__ == '__main__':
         output = image.copy()
         overlay = image.copy()
 
-        image = fix_histogram(image)
-
-        #gamma = correctGamma(image)
-
-        # Convert image to gray
-        #gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        # Remove noise
-        # removed_noise = cv2.GaussianBlur(gray, (3,3), 0)
-
-        # # Edge detection with Laplacian Derivatives
-        # laplacian = cv2.Laplacian(gray, cv2.CV_64F)
-        #
-        # laplacian_plus = np.fabs(laplacian)
-        # laplacian_normalized = cv2.normalize(laplacian_plus, None, 0, 600, cv2.NORM_MINMAX)
-        # laplacian_normalized[laplacian_normalized[:,:]>255]=255
-        # laplacian_normalized = np.array(laplacian_normalized, dtype=np.uint8)
-
-
-
         # Find cicles
-        #circles = cv2.HoughCircles(laplacian_normalized , cv2.HOUGH_GRADIENT, 1.1, 270, param1 = 60, param2 = 100, minRadius = 95, maxRadius = 200)
         circles = find_circles(image)
 
         rx = None
@@ -343,10 +300,6 @@ if __name__ == '__main__':
             test_avg = calculate_average_distance(banknote_analize)
             decision, money = make_banknote_decision(test_avg)
 
-            test_hsv = calculate_average_hue(banknote_analize)
-            #print("HSV = " + str(test_hsv))
-            #print("AVG = " + str(test_avg))
-
             cv2.rectangle(overlay, (x, y), (x + width, y + height), find_color(money), -1)
             cv2.addWeighted(overlay, 0.25, output, 0.75, 0, output)
             cv2.rectangle(output, (x, y), (x + width, y + height), find_color(money), 10)
@@ -354,13 +307,11 @@ if __name__ == '__main__':
             all_money_list.append(money)
 
         if circles is not None:
-            # Convert the (x, y) coordinates and radius of the circles to integers
-            # circles = np.round(circles[0, :]).astype("int")
             # Loop over the circles (x, y, r)
             for cin, (x, y, r) in enumerate(circles):
                 # Crop image
                 crop = image[y - r : y + r, x - r : x + r].copy()
-                #show_image(crop,False)
+
                 # Set mask, black background
                 mask = np.zeros((crop.shape[0], crop.shape[1]), dtype = np.uint8)
                 cv2.circle(mask, (r, r), r, (255, 255, 255), -1, 8, 0)
@@ -393,10 +344,7 @@ if __name__ == '__main__':
 
                 ring_avg = calculate_average_distance(ring)
                 decision, money = make_coin_decision(center_circle_avg, ring_avg)
-                # print("Decision = " + decision)
-                # Draw on original image
                 if(money != -1):
-
                     # We should also check circle not intersect rectangle (rectangle has more priority than circle)
                     intersect = check_intersection(x, y, r, rx, ry, rw, rh)
 
@@ -406,6 +354,7 @@ if __name__ == '__main__':
                         cv2.circle(output, (x, y), r, find_color(money), 10)
                         cv2.putText(output, "{:.2f} PLN".format(money), (np.int(x-r/2),y), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (204, 119, 0), 3)
                         all_money_list.append(money)
-            cv2.putText(output, "W SUMIE: {:.2f} PLN".format(sum(all_money_list)), (10,50), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 255, 255), 4)
+
+            cv2.putText(output, "TOTAL: {:.2f} PLN".format(sum(all_money_list)), (10,50), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 255, 255), 4)
             path = results_dir + files_name_list[index].split('/')[1]
             cv2.imwrite(path, output)
