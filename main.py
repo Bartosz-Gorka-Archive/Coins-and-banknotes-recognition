@@ -210,20 +210,21 @@ def find_circles(img):
 
         _, contours, _ = cv2.findContours(cv_image , cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-    if contours is not None:
-        for cnt in contours:
-            approx = cv2.approxPolyDP(cnt, .03 * cv2.arcLength(cnt, True), True)
-            vert = len(approx)
-            if(3 < vert):
-                area = cv2.contourArea(cnt)
-                if (8000 < area <200000):
-                    (cx, cy), radius = cv2.minEnclosingCircle(cnt)
-                    radius=radius*0.95
-                    circleArea = radius * radius * np.pi
-                    ratio = area/circleArea
-                    if(ratio > 0.65):
-                        circle.append((int(cx),int(cy),int(radius)))
+        if contours is not None:
+            for cnt in contours:
+                approx = cv2.approxPolyDP(cnt, .03 * cv2.arcLength(cnt, True), True)
+                vert = len(approx)
+                if(3 < vert):
+                    area = cv2.contourArea(cnt)
+                    if (8000 < area <200000):
+                        (cx, cy), radius = cv2.minEnclosingCircle(cnt)
+                        radius=radius*0.95
+                        circleArea = radius * radius * np.pi
+                        ratio = area/circleArea
+                        if(ratio > 0.65):
+                            circle.append((int(cx),int(cy),int(radius)))
     return circle
+
 
 def angle_cos(p0, p1, p2):
     d1, d2 = (p0-p1).astype('float'), (p2-p1).astype('float')
@@ -244,21 +245,9 @@ def check_intersection(cx, cy, cr, rx, ry, rw, rh):
 
         return False
 
-def correctGamma(img):
-    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-    imgfloat = cv2.normalize(hsv.astype('float'), None, 0.0, 1.0, cv2.NORM_MINMAX)
-    mean = np.mean(imgfloat[:,:,2])
-    median = np.median(imgfloat[:,:,2])
-    value = (mean + median) / 2
-    img2 = img/255.0
-    correction = 1 - (0.5 - value) * 1.5
-    out = cv2.pow(img2,correction)
-    out = np.uint8(out*255)
-
-    return out
 
 if __name__ == '__main__':
-    results_dir = "results_out/"
+    results_dir = "results/"
 
     # Create new directory when not exists
     if not os.path.exists(results_dir):
