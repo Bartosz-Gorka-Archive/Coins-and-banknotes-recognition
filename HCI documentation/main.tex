@@ -47,7 +47,7 @@ Prace rozpoczęto od wykrywania monet na obrazie, aby następnie poddać analizi
 Na sam początek zaproponowano, aby odróżniac monety po kolorach, co w pierwotnej wersji okazało się bardzo słabe (a dokładniej implementacja tego pomysłu zawiodła). Przeglądając dalej dostępne funkcje w dokumentacji oraz prace naukowe o przetwarzaniu obrazów, chcieliśmy skupić się na różnych fakturach monet. Korzystając z różnej struktury monety (co szczególnie widoczne jest po zastosowaniu algorytmu detekcji krawędzi - \textit{Sobel}) pragnęliśmy zastosować wiedzę o  \textit{momentach Hu} oraz \textit{filtru Gabora} do analizy tekstury.
 Niestety obydwa wyżej wymienione sposoby wymagają jasno określonego wzorca, który nie jest możliwy do osiągnięcia w naszych zastosowaniach. W przypadku monet, nawet sztucznie wygenerowane przekształcenia, nie były wystarczająco wierne w stosunku do oryginałów. Problem spowodowany był precyzją w wycinaniu obiektu z obrazu, gdyż różnica kilku pikseli znacząco wpływała na wynik porównania.
 
-Po analizie niepowodzenia z implementacją tak rozbudowanego porównania, postanowiliśmy zmienić sam sposób podejścia do wykrytego obiektu. Zamiast porównywać fakturę, powróciliśmy do sprawdzenia kolorów, ale z innym nastawieniem (na różnice między kolorami, a nie ich wartości w wybranej przestrzeni barw). Pozwoliło to wyprowadzenie zależności dotyczących klasy obiektu.
+Po analizie niepowodzenia z implementacją tak rozbudowanego porównania, postanowiliśmy zmienić sam sposób podejścia do wykrytego obiektu. Zamiast porównywać fakturę, powróciliśmy do sprawdzenia kolorów, ale z innym nastawieniem (na różnice między kolorami, a nie ich wartości w wybranej przestrzeni barw). Pozwoliło to na wyprowadzenie zależności dotyczących klasy obiektu.
 
 \section{Analiza algorytmu}
 \subsection{Wyszukiwanie monet}
@@ -55,24 +55,32 @@ Po analizie niepowodzenia z implementacją tak rozbudowanego porównania, postan
 Wyszukiwanie monet odbywa się dzięki użyciu funkcji \textit{findContours} z biblioteki OpenCV. Wykorzystanie tej funkcji pozwala na wykrywanie kształtów, w tym okręgów, które są dla nas najbardziej istotne, poprzez funkcję \textit{minEnclosingCircle}.
 Niestety sama funkcja zwraca bardzo wiele obiektów, które trzeba poddać analizie w celu eliminacji błędów. Sytuację bez tego kroku można zaobserwować poniżej.
 
-\begin{center}
+\begin{figure}[H]
+    \centering
     \includegraphics[width=\textwidth]{Objects.png}
-\end{center}
+    \caption{Zbyt wiele wykrytych okręgów}
+\end{figure}
 
-Aby tego uniknąć, w algorytmie zastosowano różne opcje wykrywania obrazu i jego parametrów. W zależności od średniej wartości kanału V w przestrzeni barw \textit{HSV} algorytm wybiera odpowiedni preprocesing obrazu.
+Aby tego uniknąć, w algorytmie zastosowano różne opcje wykrywania obrazu i jego parametrów. W zależności od średniej wartości kanału \textit{V} w przestrzeni barw \textit{HSV} algorytm wybiera odpowiedni preprocesing obrazu.
 
-Dla ciemnych obrazów $V_avg < 100$ wprowadza się dużą korekcję gamma \textit{15} oraz skalowanie intesywności obrazu w zależności od percentyli.
+Dla ciemnych obrazów $V_{avg} < 100$ wprowadza się dużą korekcję gamma \textit{15} oraz skalowanie intesywności obrazu w zależności od percentyli.
 W tym miejscu otrzymujemy obraz binarny (czarne tło oraz białe obiekty).
-Następnie ścieżka wykrywania kół rozchodzi się na dwie ścieżki. Jedna przetwarza obraz za pomocą operacji morfologicznych, a druga używa funkcji \textit{Canny} oraz operacji morfologicznych. Wynik tych dwóch ścieżek jest łączony (operator \&) i przekazywany do funkcji \textit{findContours}.
+Następnie droga wykrywania kół rozchodzi się na dwie ścieżki. Jedna przetwarza obraz za pomocą operacji morfologicznych, a druga używa funkcji \textit{Canny} oraz operacji morfologicznych. Wynik tych dwóch ścieżek jest łączony (operator \&) i przekazywany do funkcji \textit{findContours}.
 
-Dla jasnych obrazów $V_avg >= 100$ wprowadza się przeciwną korekcję gammy \textit{0.7}. Dalej algorytm korzysta z funkcji \textit{adaptiveThreshold} z parametrem \textit{cv2.ADAPTIVE\_THRESH\_GAUSSIAN\_C} oraz operacji morfologicznych. Wynik przekazywany jest do funkcji \textit{findContours}.
+Dla jasnych obrazów $V_{avg} >= 100$ wprowadza się przeciwną korekcję gammy \textit{0.7}. Dalej algorytm korzysta z funkcji \textit{adaptiveThreshold} z parametrem \textit{cv2.ADAPTIVE\_THRESH\_GAUSSIAN\_C} oraz operacji morfologicznych. Wynik przekazywany jest do funkcji \textit{findContours}.
 
 Wykrywanie kół odbywa się poprzez funkcję \textit{minEnclosingCircle} i sprawdzenie czy pole wykrytej figury nie jest zbyt małe, albo zbyt duże, oraz czy jest w przybliżeniu równe polu koła $\Pi * r^2$. Pozwala to na pominięcie kształtów, które zostały po wstępnym przetworzeniu obrazu, tak jak na obrazkach poniżej.
 
-\begin{center}
+\begin{figure}[H]
+    \centering
     \includegraphics[width=\textwidth]{Area.png}
+    \caption{Wykryty kontur, ale nie spełniający wymagań koła}
+\end{figure}
+\begin{figure}[H]
+    \centering
     \includegraphics[width=\textwidth]{bb_000.jpg}
-\end{center}
+    \caption{Końcowy rezultat, bez zbędnego konturu}
+\end{figure}
 
 \subsection{Wyszukiwanie banknotów}
 Poszukiwanie konturów, które mogą być potencjalnymi prostokątami zawierającymi banknoty, wymaga sprawdzenia wielu warunków.
@@ -80,31 +88,39 @@ Poszukiwanie konturów, które mogą być potencjalnymi prostokątami zawierają
 Obraz podawany jest detekcji krawędzi \textit{Canny}, z wartościami progowania \textit{0, 50} oraz wielkością maski \textit{5x5} pikseli. Rezultat działania poddany jest dylatacji, dzięki której wyszczególniamy nasze krawędzi.
 
 Banknot \textit{10 PLN} w kolejnych krokach algorytmu.
-\begin{center}
+\begin{figure}[H]
+    \centering
     \includegraphics[width=\textwidth]{Gray_10_before.png}
-\end{center}
+    \caption{Banknot 10 PLN (1)}
+\end{figure}
 
-\begin{center}
+\begin{figure}[H]
+    \centering
     \includegraphics[width=\textwidth]{Gray_10_after.png}
-\end{center}
+    \caption{Banknot 10 PLN (2)}
+\end{figure}
 
 Jak widać, ostatnie zdjęcie ułatwia wyszukanie konturów banknotu, gdyż stały się one szczególnie widoczne. Analizując poniższe zdjęcie, możemy zauważyć, że bez dodatkowych zabezpieczeń w postaci sprawdzania kątów między krawędziami oraz dolnego limitu pola powierzchni, znaleziono by zbyt dużo obiektów. Po wprowadzeniu wymienionych warunków, otrzymujemy pożądany wynik.
 
-\begin{center}
+\begin{figure}[H]
+    \centering
     \includegraphics[width=\textwidth]{Single_10_PLN.png}
-\end{center}
+    \caption{Wykryte 10 PLN}
+\end{figure}
 
 \subsection{Sposób rozpoznawania monet}
 
 Wykorzystana została właściwość badanych obiektów, jakim u nas jest różnica w barwach wnętrza monety oraz jej obrzeża.
 
-Dzięki takiemu postępowaniu możemy wydedukować, z którą z czterech kombinacji mamy do czynienia. Sukcesy w rozpoznawaniu monet zostają niestety ograniczone przez wykorzystaną funkcję Wymaga ona podania minimalnego oraz maksymalnego promienia, które bez wcześniejszej ingerencji ze strony operatora mogą wyeliminować z obliczeń zdjęcia zawierające zbyt małe, bądź też zbyt duże obiekty.
+Dzięki takiemu postępowaniu możemy wydedukować, z którą z czterech kombinacji mamy do czynienia. Sukcesy w rozpoznawaniu monet zostają niestety ograniczone przez wykorzystaną funkcję. Wymaga ona podania minimalnego oraz maksymalnego promienia, które bez wcześniejszej ingerencji ze strony operatora mogą wyeliminować z obliczeń zdjęcia zawierające zbyt małe, bądź też zbyt duże obiekty.
 
-\begin{center}
+\begin{figure}[H]
+    \centering
     \includegraphics[width=\textwidth]{money.png}
-\end{center}
+    \caption{Sposób wykrywania monet}
+\end{figure}
 
-Na początku wycinane jest wnętrze obiektu i dodawane analizie kolorów. Nastepnie ta sama czynność dotyczy przygotowanego pierścienia.
+Na początku wycinane jest wnętrze obiektu i poddawane analizie kolorów. Następnie ta sama czynność dotyczy przygotowanego pierścienia.
 
 Każdy z pikseli innych od czarnego \textit{(R: 0, G: 0, B: 0)}, który zostały dodane przez nas jako tło maski, jest analizowany. Obliczamy sumę wartości bezwględnych różnic pomiędzy poszczególnymi częściami koloru tj. \textit{r - g, r - b, g - b}. Suma ta jest dodawana do tablicy wartości cząstkowych, która na samym końcu zostaje uśredniona dzięki zastosowaniu \textit{numpy.average}.
 
@@ -118,23 +134,25 @@ decyzja = \left\{\begin{array}{ll}
 \end{array} \right.
 $$
 
-Kluczowym etapem jest poprawne przygotowanie elementu do analizy. Niestety również taka implementacja jest wyjątkowo wrażliwa na prześwietlone obiekty, które człowiek rozpozna bez wielkiego problemu, a dla systemów rozpoznawania nie jest to takie proste.
+Kluczowym etapem jest poprawne przygotowanie elementu do analizy. Niestety również taka implementacja jest wyjątkowo wrażliwa na prześwietlone obiekty, które człowiek rozpozna bez wielkiego problemu, a system rozpoznawania nie.
 
 \subsection{Sposób rozpoznawania banknotów}
 
 Próby rozpoznania banknotów rozpoczęto podobnie jak w przypadku monet. Początkowe podejście z liczeniem średniej dla całego banknotu zostało szybko zarzucone, aby liczyć średnią tylko dla wybranego wycinka. Wykorzystano korzystną właściwość występowania na banknocie władcy Polski w różnym kolorze.
 
-\begin{center}
+\begin{figure}[H]
+    \centering
     \includegraphics[width=\textwidth]{10_PLN_part.png}
-\end{center}
+    \caption{Rozpoznawanie banknotów (10 PLN)}
+\end{figure}
 
 W drodze eksperytmu z przygotowanymi zdjęciami, wybrano następujące zakresy dla wnioskowania odnośnie banknotu:
 
 $$
 decyzja = \left\{\begin{array}{ll}
 \textrm{10 PLN} & \textrm{gdy średnia $>$ 80}\\
-\textrm{50 PLN} & \textrm{gdy średnia $>$ 40}\\
-\textrm{100 PLN} & \textrm{gdy średnia $\leq$ 40 }
+\textrm{100 PLN} & \textrm{gdy średnia $>$ 40}\\
+\textrm{50 PLN} & \textrm{gdy średnia $\leq$ 40 }
 \end{array} \right.
 $$
 
@@ -148,7 +166,7 @@ Rozpoznawanie obiektów dla człowieka wydaje się rzeczą naturalną, niestety 
 \section{Analizowane przypadki}
 
 \subsection{Pomyślne rozpoznanie}
-\begin{figure}[ht!]
+\begin{figure}[H]
      \begin{center}
         \subfigure[1]{
             \label{fig:first}
@@ -172,7 +190,7 @@ Rozpoznawanie obiektów dla człowieka wydaje się rzeczą naturalną, niestety 
 \end{figure}
 
 
-\begin{figure}[ht!]
+\begin{figure}[H]
      \begin{center}
         \subfigure[1]{
             \label{fig:first}
@@ -197,7 +215,7 @@ Rozpoznawanie obiektów dla człowieka wydaje się rzeczą naturalną, niestety 
 
 
 \subsection{Niepomyślne rozpoznania}
-\begin{figure}[ht!]
+\begin{figure}[H]
      \begin{center}
         \subfigure[1]{
             \label{fig:first}
